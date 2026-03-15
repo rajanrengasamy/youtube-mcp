@@ -6,7 +6,7 @@ import test from "node:test";
 import { detectKnownClients, keyTransparencySummary } from "../lib/install-diagnostics.js";
 
 test("detectKnownClients finds Claude Desktop config and Codex binary from a mocked environment", () => {
-  const root = mkdtempSync(join(tmpdir(), "youtube-mcp-install-"));
+  const root = mkdtempSync(join(tmpdir(), "vidlens-mcp-install-"));
   const homeDir = join(root, "home");
   const cwd = join(root, "workspace");
   const binDir = join(root, "bin");

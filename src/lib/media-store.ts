@@ -57,7 +57,7 @@ export interface MediaStoreConfig {
 }
 
 function resolveDataDir(config?: MediaStoreConfig): string {
-  const baseDir = config?.dataDir ?? process.env.YOUTUBE_MCP_DATA_DIR ?? join(homedir(), "Library", "Application Support", "youtube-mcp");
+  const baseDir = config?.dataDir ?? process.env.VIDLENS_DATA_DIR ?? join(homedir(), "Library", "Application Support", "vidlens-mcp");
   const dir = join(baseDir, "media");
   mkdirSync(dir, { recursive: true });
   return dir;

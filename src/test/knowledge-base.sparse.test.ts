@@ -6,14 +6,14 @@ import test from "node:test";
 import { TranscriptKnowledgeBase, type ImportTranscriptItem } from "../lib/knowledge-base.js";
 
 test("sparse transcripts still import as a single searchable chunk", async () => {
-  const dataDir = mkdtempSync(join(tmpdir(), "youtube-mcp-sparse-"));
+  const dataDir = mkdtempSync(join(tmpdir(), "vidlens-mcp-sparse-"));
   const kb = new TranscriptKnowledgeBase({ dataDir });
 
   const item: ImportTranscriptItem = {
     video: {
       videoId: "sparse00001",
       title: "Sparse transcript demo",
-      channelTitle: "youtube-mcp",
+      channelTitle: "vidlens-mcp",
       url: "https://www.youtube.com/watch?v=sparse00001",
     },
     transcript: {

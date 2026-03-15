@@ -208,7 +208,7 @@ export function buildServerEntry(options: {
     : {};
   const env: Record<string, string> = {
     ...existingEnv,
-    YOUTUBE_MCP_DATA_DIR: options.dataDir,
+    VIDLENS_DATA_DIR: options.dataDir,
   };
 
   if (options.youtubeApiKey) {
@@ -228,7 +228,7 @@ export function buildServerEntry(options: {
   };
 }
 
-export function inspectMcpConfigText(configText: string, serverName = "youtube-mcp"): McpConfigInspection {
+export function inspectMcpConfigText(configText: string, serverName = "vidlens-mcp"): McpConfigInspection {
   try {
     const parsed = JSON.parse(configText) as unknown;
     if (!isRecord(parsed)) {
@@ -256,7 +256,7 @@ export function inspectMcpConfigText(configText: string, serverName = "youtube-m
   }
 }
 
-export function inspectMcpConfigPath(configPath: string | undefined, serverName = "youtube-mcp"): McpConfigInspection {
+export function inspectMcpConfigPath(configPath: string | undefined, serverName = "vidlens-mcp"): McpConfigInspection {
   if (!configPath || !existsSync(configPath)) {
     return {
       path: configPath,
@@ -281,7 +281,7 @@ export function mergeMcpConfigText(
   const merged = buildServerEntry({
     nodePath: serverEntry.command,
     cliPath: serverEntry.args[0] ?? "dist/cli.js",
-    dataDir: serverEntry.env?.YOUTUBE_MCP_DATA_DIR ?? "",
+    dataDir: serverEntry.env?.VIDLENS_DATA_DIR ?? "",
     youtubeApiKey: serverEntry.env?.YOUTUBE_API_KEY,
     geminiApiKey: serverEntry.env?.GEMINI_API_KEY,
     googleApiKey: serverEntry.env?.GOOGLE_API_KEY,
@@ -306,7 +306,7 @@ export function upsertMcpServerConfig(options: {
   printOnly?: boolean;
   now?: Date;
 }): UpsertConfigResult {
-  const serverName = options.serverName ?? "youtube-mcp";
+  const serverName = options.serverName ?? "vidlens-mcp";
   const existingText = existsSync(options.configPath) ? readFileSync(options.configPath, "utf8") : undefined;
   const nextText = mergeMcpConfigText(existingText, serverName, options.entry);
   const changed = existingText !== nextText;
@@ -378,7 +378,7 @@ async function renderDoctorReport(parsed: ParsedCliArgs, deps: CliDeps): Promise
   lines.push("Client registration:");
   lines.push(`- Claude Desktop detected: ${yesNo(Boolean(claudeDesktop?.detected))}`);
   lines.push(`- Claude Desktop config path: ${claudeDesktop?.configPath ?? "unknown"}`);
-  lines.push(`- youtube-mcp in Claude Desktop config: ${describeInspectionStatus(claudeInspection)}`);
+  lines.push(`- vidlens-mcp in Claude Desktop config: ${describeInspectionStatus(claudeInspection)}`);
   if (claudeInspection.status === "registered") {
     const command = typeof claudeInspection.serverEntry?.command === "string"
       ? claudeInspection.serverEntry.command
@@ -425,7 +425,7 @@ async function renderDoctorReport(parsed: ParsedCliArgs, deps: CliDeps): Promise
 function renderSetupReport(parsed: ParsedCliArgs, deps: CliDeps): string {
   const clients = deps.detectClients();
   const targetClients = parsed.clientIds.length > 0 ? dedupeClientIds(parsed.clientIds) : ["claude_desktop"];
-  const dataDir = parsed.dataDir ?? deps.env.YOUTUBE_MCP_DATA_DIR ?? resolveDefaultDataDir(deps.homeDir, deps.platform);
+  const dataDir = parsed.dataDir ?? deps.env.VIDLENS_DATA_DIR ?? resolveDefaultDataDir(deps.homeDir, deps.platform);
   const lines: string[] = [];
   const errors: string[] = [];
 
@@ -478,7 +478,7 @@ function renderSetupReport(parsed: ParsedCliArgs, deps: CliDeps): string {
         if (result.backupPath) {
           lines.push(`- Backup: ${result.backupPath}`);
         }
-        lines.push(`- Server name: youtube-mcp`);
+        lines.push(`- Server name: vidlens-mcp`);
         lines.push("- Generated MCP entry:");
         lines.push(indent(JSON.stringify(redactEntryForDisplay(entry), null, 2), "  "));
         if (!parsed.printOnly) {
@@ -507,7 +507,7 @@ function renderSetupReport(parsed: ParsedCliArgs, deps: CliDeps): string {
     const supportPaths = resolveChatGptDesktopSupportPaths(deps.homeDir, deps.platform, deps.env);
     lines.push(`- Support path candidates: ${supportPaths.join(", ")}`);
     lines.push("- Use this generated server entry in the ChatGPT Desktop MCP UI/JSON if available:");
-    lines.push(indent(JSON.stringify({ name: "youtube-mcp", ...redactEntryForDisplay(entry) }, null, 2), "  "));
+    lines.push(indent(JSON.stringify({ name: "vidlens-mcp", ...redactEntryForDisplay(entry) }, null, 2), "  "));
     lines.push("");
   }
 
@@ -536,15 +536,15 @@ function renderHelp(packageName: string): string {
   return `${packageName} CLI
 
 Usage:
-  youtube-mcp                 Start the MCP server over stdio
-  youtube-mcp serve           Start the MCP server over stdio
-  youtube-mcp version         Print package version
-  youtube-mcp doctor          Run setup/health diagnostics
-  youtube-mcp setup           Configure Claude Desktop and print ChatGPT manual entry
+  vidlens-mcp                 Start the MCP server over stdio
+  vidlens-mcp serve           Start the MCP server over stdio
+  vidlens-mcp version         Print package version
+  vidlens-mcp doctor          Run setup/health diagnostics
+  vidlens-mcp setup           Configure Claude Desktop and print ChatGPT manual entry
 
 Common flags:
   --client <id>              Target client (claude_desktop, chatgpt_desktop, claude_code, cursor, vscode, codex)
-  --data-dir <path>          Override YOUTUBE_MCP_DATA_DIR for generated config
+  --data-dir <path>          Override VIDLENS_DATA_DIR for generated config
   --youtube-api-key <key>    Persist YOUTUBE_API_KEY into generated client config
   --gemini-api-key <key>     Persist GEMINI_API_KEY into generated client config
   --google-api-key <key>     Persist GOOGLE_API_KEY into generated client config
@@ -578,10 +578,10 @@ function doctorSetupSuggestions(
 ): string[] {
   const suggestions: string[] = [];
   if (claudeDesktop?.configPath && inspection.status === "not_found") {
-    suggestions.push(`Run setup to create ${claudeDesktop.configPath} and register youtube-mcp for Claude Desktop.`);
+    suggestions.push(`Run setup to create ${claudeDesktop.configPath} and register vidlens-mcp for Claude Desktop.`);
   }
   if (inspection.status === "missing") {
-    suggestions.push("Run setup to add youtube-mcp to Claude Desktop without disturbing other MCP servers.");
+    suggestions.push("Run setup to add vidlens-mcp to Claude Desktop without disturbing other MCP servers.");
   }
   if (inspection.status === "invalid_json") {
     suggestions.push(`Fix the invalid Claude Desktop config JSON at ${claudeDesktop?.configPath ?? "the detected config path"}, then rerun setup.`);
@@ -594,13 +594,13 @@ function doctorSetupSuggestions(
 
 function describeSetupResult(result: UpsertConfigResult, alreadyRegistered: boolean): string {
   if (result.changed && result.created) {
-    return result.path.endsWith(".json") ? "created config and registered youtube-mcp" : "created target and registered youtube-mcp";
+    return result.path.endsWith(".json") ? "created config and registered vidlens-mcp" : "created target and registered vidlens-mcp";
   }
   if (result.changed && alreadyRegistered) {
-    return "updated existing youtube-mcp entry in-place";
+    return "updated existing vidlens-mcp entry in-place";
   }
   if (result.changed) {
-    return "merged youtube-mcp into existing MCP config";
+    return "merged vidlens-mcp into existing MCP config";
   }
   return "already configured; no file changes were needed";
 }
@@ -610,7 +610,7 @@ function describeInspectionStatus(inspection: McpConfigInspection): string {
     case "registered":
       return "registered";
     case "missing":
-      return "config exists, but youtube-mcp is not registered";
+      return "config exists, but vidlens-mcp is not registered";
     case "invalid_json":
       return `invalid JSON (${inspection.error ?? "unknown parse error"})`;
     case "not_found":

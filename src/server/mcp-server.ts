@@ -602,7 +602,7 @@ export function createYouTubeMcpServer(service = new YouTubeService()): Server {
 
   const server = new Server(
     {
-      name: "youtube-mcp",
+      name: "vidlens-mcp",
       version: "0.3.0",
     },
     {

@@ -6,7 +6,7 @@ import test from "node:test";
 import { YouTubeService } from "../lib/youtube-service.js";
 
 test("knowledge-base flow imports, searches, lists, and removes collections", async () => {
-  const dataDir = mkdtempSync(join(tmpdir(), "youtube-mcp-kb-"));
+  const dataDir = mkdtempSync(join(tmpdir(), "vidlens-mcp-kb-"));
   const service = new YouTubeService({ dryRun: true, dataDir });
   const playlistId = "PL590L5WQmH8fJ54FNRU3kVZKeTxQqM2C4";
 

@@ -1,7 +1,7 @@
 {
-  "name": "youtube-mcp",
+  "name": "vidlens-mcp",
   "version": "0.3.0",
-  "description": "Modular YouTube MCP platform: core transcript intelligence, audience/comment extensions, and diagnostics with API + yt-dlp + page extraction fallback",
+  "description": "VidLens MCP \u2014 The YouTube intelligence layer for AI agents. 37 tools, zero config, three-tier fallback.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

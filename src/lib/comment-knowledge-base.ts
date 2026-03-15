@@ -95,8 +95,8 @@ interface CollectionModel {
 
 function defaultDataDir(): string {
   return (
-    process.env.YOUTUBE_MCP_DATA_DIR ||
-    join(homedir(), "Library", "Application Support", "youtube-mcp")
+    process.env.VIDLENS_DATA_DIR ||
+    join(homedir(), "Library", "Application Support", "vidlens-mcp")
   );
 }
 

@@ -9,7 +9,7 @@ import {
 } from "../lib/comment-knowledge-base.js";
 
 function makeTestKB(): CommentKnowledgeBase {
-  const dataDir = mkdtempSync(join(tmpdir(), "youtube-mcp-comment-kb-"));
+  const dataDir = mkdtempSync(join(tmpdir(), "vidlens-mcp-comment-kb-"));
   return new CommentKnowledgeBase({ dataDir });
 }
 
@@ -17,7 +17,7 @@ function sampleComments(): CommentImportItem {
   return {
     videoId: "testVid001",
     videoTitle: "How to Build an MCP Server",
-    channelTitle: "youtube-mcp",
+    channelTitle: "vidlens-mcp",
     comments: [
       {
         commentId: "c1",

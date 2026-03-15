@@ -5,7 +5,7 @@ import { YouTubeService } from "../lib/youtube-service.js";
 
 async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");
-  const dataDir = dryRun ? mkdtempSync(join(tmpdir(), "youtube-mcp-smoke-")) : process.env.YOUTUBE_MCP_DATA_DIR;
+  const dataDir = dryRun ? mkdtempSync(join(tmpdir(), "vidlens-mcp-smoke-")) : process.env.VIDLENS_DATA_DIR;
   const service = new YouTubeService({ dryRun, dataDir });
 
   const sampleVideo = "dQw4w9WgXcQ";
@@ -142,6 +142,54 @@ async function main(): Promise<void> {
           { channelIdOrHandleOrUrl: sampleChannel, timezone: "Australia/Sydney" },
           { dryRun },
         ),
+    },
+    {
+      name: "discoverNicheTrends",
+      run: () => service.discoverNicheTrends({ niche: "AI coding tools", maxResults: 8 }, { dryRun }),
+    },
+    {
+      name: "exploreNicheCompetitors",
+      run: () => service.exploreNicheCompetitors({ niche: "AI coding tools", maxChannels: 5 }, { dryRun }),
+    },
+    {
+      name: "importComments",
+      run: () => service.importComments({ videoIdOrUrl: sampleVideo, maxTopLevel: 5, label: "Smoke Comments" }, { dryRun }),
+    },
+    {
+      name: "setActiveCommentCollection",
+      run: () => service.setActiveCommentCollection({ collectionId: `comments-${sampleVideo}` }),
+    },
+    {
+      name: "searchComments",
+      run: () => service.searchComments({ query: "helpful explanation", maxResults: 3 }),
+    },
+    {
+      name: "listCommentCollections",
+      run: () => service.listCommentCollections({ includeVideoList: true }),
+    },
+    {
+      name: "clearActiveCommentCollection",
+      run: () => service.clearActiveCommentCollection(),
+    },
+    {
+      name: "removeCommentCollection",
+      run: () => service.removeCommentCollection({ collectionId: `comments-${sampleVideo}` }),
+    },
+    {
+      name: "mediaStoreHealth",
+      run: () => service.mediaStoreHealth(),
+    },
+    {
+      name: "listMediaAssets",
+      run: () => service.listMediaAssets({ limit: 5 }),
+    },
+    {
+      name: "downloadAsset",
+      run: () => service.downloadAsset({ videoIdOrUrl: sampleVideo, format: "thumbnail" }, { dryRun }),
+    },
+    {
+      name: "extractKeyframes",
+      run: () => service.extractKeyframes({ videoIdOrUrl: sampleVideo, intervalSec: 30, maxFrames: 3 }, { dryRun }),
     },
   ];
 

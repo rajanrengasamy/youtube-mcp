@@ -102,7 +102,7 @@ interface SearchRow {
 }
 
 function defaultDataDir(): string {
-  return process.env.YOUTUBE_MCP_DATA_DIR || join(homedir(), "Library", "Application Support", "youtube-mcp");
+  return process.env.VIDLENS_DATA_DIR || join(homedir(), "Library", "Application Support", "vidlens-mcp");
 }
 
 export class TranscriptKnowledgeBase {

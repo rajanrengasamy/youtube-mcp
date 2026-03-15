@@ -27,7 +27,7 @@ test("parseCliArgs parses setup flags and client aliases", () => {
     "claude",
     "--client=ultra",
     "--data-dir",
-    "/tmp/youtube-mcp",
+    "/tmp/vidlens-mcp",
     "--youtube-api-key",
     "yt-key",
     "--gemini-api-key=gem-key",
@@ -36,17 +36,17 @@ test("parseCliArgs parses setup flags and client aliases", () => {
 
   assert.equal(parsed.command, "setup");
   assert.deepEqual(parsed.clientIds, ["claude_desktop", "chatgpt_desktop"]);
-  assert.equal(parsed.dataDir, "/tmp/youtube-mcp");
+  assert.equal(parsed.dataDir, "/tmp/vidlens-mcp");
   assert.equal(parsed.youtubeApiKey, "yt-key");
   assert.equal(parsed.geminiApiKey, "gem-key");
   assert.equal(parsed.printOnly, true);
 });
 
-test("buildServerEntry preserves existing env while updating youtube-mcp fields", () => {
+test("buildServerEntry preserves existing env while updating vidlens-mcp fields", () => {
   const entry = buildServerEntry({
     nodePath: "/usr/local/bin/node",
     cliPath: "/repo/dist/cli.js",
-    dataDir: "/Users/test/Library/Application Support/youtube-mcp",
+    dataDir: "/Users/test/Library/Application Support/vidlens-mcp",
     youtubeApiKey: "yt-key",
     existingEntry: {
       env: {
@@ -61,7 +61,7 @@ test("buildServerEntry preserves existing env while updating youtube-mcp fields"
   assert.equal(entry.env?.EXISTING_FLAG, "keep-me");
   assert.equal(entry.env?.YOUTUBE_API_KEY, "yt-key");
   assert.equal(entry.env?.GEMINI_API_KEY, "already-set");
-  assert.equal(entry.env?.YOUTUBE_MCP_DATA_DIR, "/Users/test/Library/Application Support/youtube-mcp");
+  assert.equal(entry.env?.VIDLENS_DATA_DIR, "/Users/test/Library/Application Support/vidlens-mcp");
 });
 
 test("mergeMcpConfigText safely preserves other MCP servers", () => {
@@ -79,12 +79,12 @@ test("mergeMcpConfigText safely preserves other MCP servers", () => {
       null,
       2,
     ),
-    "youtube-mcp",
+    "vidlens-mcp",
     {
       command: "/usr/local/bin/node",
       args: ["/repo/dist/cli.js", "serve"],
       env: {
-        YOUTUBE_MCP_DATA_DIR: "/Users/test/Library/Application Support/youtube-mcp",
+        VIDLENS_DATA_DIR: "/Users/test/Library/Application Support/vidlens-mcp",
       },
     },
   );
@@ -95,19 +95,19 @@ test("mergeMcpConfigText safely preserves other MCP servers", () => {
   };
   assert.equal(parsed.theme, "dark");
   assert.deepEqual(parsed.mcpServers.github.args, ["-y", "@modelcontextprotocol/server-github"]);
-  assert.equal(parsed.mcpServers["youtube-mcp"]?.command, "/usr/local/bin/node");
-  assert.deepEqual(parsed.mcpServers["youtube-mcp"]?.args, ["/repo/dist/cli.js", "serve"]);
+  assert.equal(parsed.mcpServers["vidlens-mcp"]?.command, "/usr/local/bin/node");
+  assert.deepEqual(parsed.mcpServers["vidlens-mcp"]?.args, ["/repo/dist/cli.js", "serve"]);
 });
 
 test("inspectMcpConfigText reports registered server env keys", () => {
   const inspection = inspectMcpConfigText(
     JSON.stringify({
       mcpServers: {
-        "youtube-mcp": {
+        "vidlens-mcp": {
           command: "/usr/local/bin/node",
           args: ["/repo/dist/cli.js", "serve"],
           env: {
-            YOUTUBE_MCP_DATA_DIR: "/tmp/youtube-mcp",
+            VIDLENS_DATA_DIR: "/tmp/vidlens-mcp",
             GEMINI_API_KEY: "secret",
           },
         },
@@ -116,11 +116,11 @@ test("inspectMcpConfigText reports registered server env keys", () => {
   );
 
   assert.equal(inspection.status, "registered");
-  assert.deepEqual(inspection.envKeys.sort(), ["GEMINI_API_KEY", "YOUTUBE_MCP_DATA_DIR"]);
+  assert.deepEqual(inspection.envKeys.sort(), ["GEMINI_API_KEY", "VIDLENS_DATA_DIR"]);
 });
 
 test("upsertMcpServerConfig writes a safe merged config without removing other servers", () => {
-  const configDir = mkdtempSync(join(tmpdir(), "youtube-mcp-cli-"));
+  const configDir = mkdtempSync(join(tmpdir(), "vidlens-mcp-cli-"));
   const configPath = join(configDir, "claude_desktop_config.json");
   writeFileSync(
     configPath,
@@ -144,7 +144,7 @@ test("upsertMcpServerConfig writes a safe merged config without removing other s
       command: "/usr/local/bin/node",
       args: ["/repo/dist/cli.js", "serve"],
       env: {
-        YOUTUBE_MCP_DATA_DIR: "/tmp/youtube-mcp",
+        VIDLENS_DATA_DIR: "/tmp/vidlens-mcp",
       },
     },
     now: new Date("2026-03-14T17:10:00.000Z"),
@@ -156,7 +156,7 @@ test("upsertMcpServerConfig writes a safe merged config without removing other s
   assert.equal(result.changed, true);
   assert.equal(Boolean(result.backupPath), true);
   assert.deepEqual(written.mcpServers.github.args, ["-y", "@modelcontextprotocol/server-github"]);
-  assert.deepEqual(written.mcpServers["youtube-mcp"]?.args, ["/repo/dist/cli.js", "serve"]);
+  assert.deepEqual(written.mcpServers["vidlens-mcp"]?.args, ["/repo/dist/cli.js", "serve"]);
 });
 
 test("runCli routes default command to the stdio server", async () => {
@@ -167,7 +167,7 @@ test("runCli routes default command to the stdio server", async () => {
       started += 1;
     },
     createService: () => ({}) as unknown as YouTubeService,
-    packageMeta: { name: "youtube-mcp", version: "0.2.16" },
+    packageMeta: { name: "vidlens-mcp", version: "0.2.16" },
     detectClients: () => [],
     writeStdout: () => undefined,
     writeStderr: () => undefined,
@@ -189,7 +189,7 @@ test("runCli version prints the package version", async () => {
   const exitCode = await runCli(["version"], {
     startServer: async () => undefined,
     createService: () => ({}) as unknown as YouTubeService,
-    packageMeta: { name: "youtube-mcp", version: "0.2.16" },
+    packageMeta: { name: "vidlens-mcp", version: "0.2.16" },
     detectClients: () => [],
     writeStdout: (text) => {
       stdout.push(text);
@@ -204,5 +204,5 @@ test("runCli version prints the package version", async () => {
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(stdout.join(""), "youtube-mcp v0.2.16\n");
+  assert.equal(stdout.join(""), "vidlens-mcp v0.2.16\n");
 });

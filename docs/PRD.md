@@ -3083,7 +3083,7 @@ CREATE INDEX IF NOT EXISTS idx_niche_snapshots_niche ON niche_snapshots(niche, s
 
 | Module | Scope | Default? | Dependencies Beyond Core | Status |
 |---|---|---|---|---|
-| **Discovery / Trends** | Niche trend analysis, momentum, saturation, creator landscape, content gaps, niche comparison, trend tracking | Always on | Comments need API key for demand signals; core analysis works without | **V2.5 — design ready, build next** |
+| **Discovery / Trends** | Niche trend analysis, momentum, saturation, creator landscape, content gaps, niche comparison, trend tracking | Always on | Comments need API key for demand signals; core analysis works without | **V2.17 — shipped (current implementation: `discoverNicheTrends`, `exploreNicheCompetitors`)** |
 
 **Module Capability Matrix addition:**
 
@@ -3104,7 +3104,7 @@ After Discovery / Trends, add to V2.10 tool summary:
 | `trackNicheOverTime` | **Discovery / Trends** | V2.5 | **New** |
 | `watchTopicTrends` | **Discovery / Trends** | V1 | Shipped (repositioned from Core) |
 
-**Total tool count: 28** (25 existing + 3 new Discovery / Trends tools)
+**Implementation note:** this DT.8 block is the broader tool-family design sketch. The currently shipped implementation in V2.17 exposes `discoverNicheTrends` and `exploreNicheCompetitors` now; `compareNiches` and `trackNicheOverTime` remain future expansion.
 
 ---
 
@@ -3132,15 +3132,17 @@ After Discovery / Trends, add to V2.10 tool summary:
 
 ## DT.10) Implementation Readiness Checklist (Discovery / Trends)
 
+**Status note:** this checklist reflects the earlier broader design plan. The current shipped V2.17 implementation landed the practical first slice under the concrete tool names `discoverNicheTrends` and `exploreNicheCompetitors`. The remaining items below are still future work unless otherwise noted.
+
 - [ ] `analyzeNicheTrends` tool — full implementation with momentum, saturation, creator landscape, gaps, recommendation
 - [ ] `compareNiches` tool — wraps analyzeNicheTrends internals for side-by-side comparison
 - [ ] `trackNicheOverTime` tool — snapshot persistence + comparison logic
 - [ ] `niche_snapshots` SQLite table + migration
-- [ ] `watchTopicTrends` repositioned in module map (no code change needed)
+- [x] `watchTopicTrends` repositioned in module map (no code change needed)
 - [ ] Register all 3 new tools in `mcp-server.ts`
 - [ ] `checkHealth` / `checkSystemHealth` updated to include Discovery / Trends module status
-- [ ] Tests: niche trend analysis with mock search data, saturation calculation, cohort comparison
-- [ ] README update: Discovery / Trends section with hero use case example
+- [x] Tests: niche trend analysis with mock search data, saturation calculation, cohort comparison
+- [x] README update: Discovery / Trends section with hero use case example
 ---
 
 ## V2.17) Discovery / Trends Module — Shipped

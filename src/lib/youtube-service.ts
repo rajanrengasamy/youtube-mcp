@@ -845,7 +845,7 @@ export class YouTubeService {
           status: "warn",
           detail: toMessage(error),
         });
-        suggestions.push("If you want higher-fidelity metadata, verify YOUTUBE_API_KEY is valid && has YouTube Data API v3 enabled.");
+        suggestions.push("If you want higher-fidelity metadata, verify YOUTUBE_API_KEY is valid and has YouTube Data API v3 enabled.");
       }
     } else {
       checks.push({
@@ -869,7 +869,7 @@ export class YouTubeService {
         status: "error",
         detail,
       });
-      suggestions.push("Install yt-dlp && make sure GUI-launched apps can see it via PATH.");
+      suggestions.push("Install yt-dlp and make sure GUI-launched apps can see it via PATH.");
       return {
         videoId,
         title,
@@ -967,7 +967,7 @@ export class YouTubeService {
           : "Transcript import is currently blocked because no usable public caption track could be fetched.")
       : sparseTranscript
         ? "Transcript is importable, but sparse. V2 will preserve it as a single searchable chunk."
-        : "Transcript is importable && should chunk normally for semantic search.";
+        : "Transcript is importable and should chunk normally for semantic search.";
 
     if (!canImport && !this.api.isConfigured()) {
       suggestions.push("Adding YOUTUBE_API_KEY helps metadata diagnostics, even though transcript import still depends on public captions via yt-dlp.");
@@ -1114,7 +1114,7 @@ export class YouTubeService {
         status: "error",
         detail: toMessage(error),
       });
-      suggestions.push("Install yt-dlp && expose it in PATH for your MCP client runtime.");
+      suggestions.push("Install yt-dlp and expose it in PATH for your MCP client runtime.");
     }
 
     if (youtubeApiConfigured) {
@@ -1124,7 +1124,7 @@ export class YouTubeService {
           checks.push({
             name: "youtube_api",
             status: "ok",
-            detail: "YouTube API key is configured && passed a live metadata probe.",
+            detail: "YouTube API key is configured and passed a live metadata probe.",
           });
         } catch (error) {
           checks.push({
@@ -1132,7 +1132,7 @@ export class YouTubeService {
             status: "warn",
             detail: toMessage(error),
           });
-          suggestions.push("Verify YOUTUBE_API_KEY && confirm the YouTube Data API v3 is enabled for that project.");
+          suggestions.push("Verify YOUTUBE_API_KEY and confirm the YouTube Data API v3 is enabled for that project.");
         }
       } else {
         checks.push({
@@ -1145,9 +1145,9 @@ export class YouTubeService {
       checks.push({
         name: "youtube_api",
         status: "skipped",
-        detail: "YOUTUBE_API_KEY not configured. Metadata fallbacks still work, but quotas && fidelity are lower.",
+        detail: "YOUTUBE_API_KEY not configured. Metadata fallbacks still work, but quotas and fidelity are lower.",
       });
-      suggestions.push("Add YOUTUBE_API_KEY if you want stronger metadata diagnostics && less fallback reliance.");
+      suggestions.push("Add YOUTUBE_API_KEY if you want stronger metadata diagnostics and less fallback reliance.");
     }
 
     if (geminiConfigured) {
@@ -1158,7 +1158,7 @@ export class YouTubeService {
           checks.push({
             name: "gemini_embeddings",
             status: "ok",
-            detail: "Gemini embedding provider is configured && passed a live embedding probe.",
+            detail: "Gemini embedding provider is configured and passed a live embedding probe.",
           });
         } catch (error) {
           checks.push({
@@ -1198,12 +1198,12 @@ export class YouTubeService {
         status: "error",
         detail: toMessage(error),
       });
-      suggestions.push("Ensure YOUTUBE_MCP_DATA_DIR points to a writable directory.");
+      suggestions.push("Ensure VIDLENS_DATA_DIR points to a writable directory.");
     }
 
     const supportedClientDetected = clients.some((client) => client.supportLevel === "supported" && client.detected);
     if (!supportedClientDetected) {
-      suggestions.push("No supported MCP client was detected automatically. Claude Desktop && Claude Code are the best-supported install targets tonight.");
+      suggestions.push("No supported MCP client was detected automatically. Claude Desktop and Claude Code are the best-supported install targets tonight.");
     }
 
     const overallStatus = checks.some((check) => check.status === "error")
@@ -1326,6 +1326,211 @@ export class YouTubeService {
       throw this.invalidInput("collectionId cannot be empty");
     }
     return this.commentKnowledgeBase.removeCollection(input.collectionId.trim());
+  }
+
+  // ── Media / Asset tools ──
+
+  async downloadAsset(input: DownloadAssetInput, options: ServiceOptions = {}): Promise<DownloadAssetOutput> {
+    const videoId = this.requireVideoId(input.videoIdOrUrl);
+
+    if (this.isDryRun(options)) {
+      const kind = input.format === "best_audio" ? "audio" : input.format === "thumbnail" ? "thumbnail" : "video";
+      const extension = kind === "thumbnail" ? "jpg" : kind === "audio" ? "m4a" : "mp4";
+      return {
+        asset: {
+          assetId: `dry-${kind}-${videoId}`,
+          videoId,
+          kind,
+          filePath: join(this.mediaStore.videoDir(videoId), kind === "thumbnail" ? `${videoId}-thumb.${extension}` : `${videoId}.${extension}`),
+          fileName: kind === "thumbnail" ? `${videoId}-thumb.${extension}` : `${videoId}.${extension}`,
+          fileSizeBytes: 0,
+          mimeType: kind === "thumbnail" ? "image/jpeg" : kind === "audio" ? "audio/mp4" : "video/mp4",
+        },
+        downloadedBytes: 0,
+        durationMs: 0,
+        cached: false,
+        provenance: this.makeProvenance("none", false, ["Dry-run media download — no files were written."]),
+      };
+    }
+
+    const result = await this.mediaDownloader.download({
+      videoIdOrUrl: videoId,
+      format: input.format,
+      maxSizeMb: input.maxSizeMb,
+    });
+
+    return {
+      asset: {
+        assetId: result.asset.assetId,
+        videoId: result.asset.videoId,
+        kind: result.asset.kind,
+        filePath: result.asset.filePath,
+        fileName: result.asset.fileName,
+        fileSizeBytes: result.asset.fileSizeBytes,
+        mimeType: result.asset.mimeType,
+        durationSec: result.asset.durationSec,
+        width: result.asset.width,
+        height: result.asset.height,
+      },
+      downloadedBytes: result.downloadedBytes,
+      durationMs: result.durationMs,
+      cached: result.downloadedBytes === 0,
+      provenance: this.makeProvenance("yt_dlp", false, ["Asset downloaded into the local media store."]),
+    };
+  }
+
+  async listMediaAssets(input: ListMediaAssetsInput = {}): Promise<ListMediaAssetsOutput> {
+    const kind = input.kind;
+    const limit = clamp(input.limit ?? 100, 1, 500);
+    let assets = input.videoIdOrUrl
+      ? this.mediaStore.listAssetsForVideo(this.requireVideoId(input.videoIdOrUrl))
+      : this.mediaStore.listAllAssets({ kind, limit });
+
+    if (input.videoIdOrUrl && kind) {
+      assets = assets.filter((asset) => asset.kind === kind);
+    }
+    if (input.videoIdOrUrl) {
+      assets = assets.slice(0, limit);
+    }
+
+    const stats = this.mediaStore.getStats();
+    return {
+      assets: assets.map((asset) => ({
+        assetId: asset.assetId,
+        videoId: asset.videoId,
+        kind: asset.kind,
+        filePath: asset.filePath,
+        fileName: asset.fileName,
+        fileSizeBytes: asset.fileSizeBytes,
+        mimeType: asset.mimeType,
+        timestampSec: asset.timestampSec,
+        width: asset.width,
+        height: asset.height,
+        durationSec: asset.durationSec,
+        createdAt: asset.createdAt,
+      })),
+      stats: {
+        totalAssets: stats.totalAssets,
+        totalSizeBytes: stats.totalSizeBytes,
+        videoCount: stats.videoCount,
+        byKind: stats.byKind,
+      },
+      provenance: this.makeProvenance("none", false, ["Read from the local media asset manifest."]),
+    };
+  }
+
+  async removeMediaAsset(input: RemoveMediaAssetInput): Promise<RemoveMediaAssetOutput> {
+    const deleteFiles = input.deleteFiles ?? true;
+    if (!input.assetId && !input.videoIdOrUrl) {
+      throw this.invalidInput("Provide either assetId or videoIdOrUrl so the media store knows what to remove.");
+    }
+
+    let removed = 0;
+    let freedBytes = 0;
+
+    if (input.assetId) {
+      const asset = this.mediaStore.getAsset(input.assetId);
+      if (asset) {
+        freedBytes = asset.fileSizeBytes;
+        this.mediaStore.removeAsset(input.assetId, deleteFiles);
+        removed = 1;
+      }
+    } else if (input.videoIdOrUrl) {
+      const videoId = this.requireVideoId(input.videoIdOrUrl);
+      const assets = this.mediaStore.listAssetsForVideo(videoId);
+      freedBytes = assets.reduce((sum, asset) => sum + asset.fileSizeBytes, 0);
+      removed = this.mediaStore.removeVideoAssets(videoId, deleteFiles);
+    }
+
+    return {
+      removed,
+      freedBytes,
+      provenance: this.makeProvenance("none", false, [
+        deleteFiles
+          ? "Manifest entries and files were removed from local storage."
+          : "Manifest entries were removed; files were left on disk.",
+      ]),
+    };
+  }
+
+  async extractKeyframes(input: ExtractKeyframesInput, options: ServiceOptions = {}): Promise<ExtractKeyframesOutput> {
+    const videoId = this.requireVideoId(input.videoIdOrUrl);
+
+    if (this.isDryRun(options)) {
+      return {
+        videoId,
+        framesExtracted: 0,
+        assets: [],
+        durationMs: 0,
+        provenance: this.makeProvenance("none", false, ["Dry-run keyframe extraction — ffmpeg was not invoked."]),
+      };
+    }
+
+    const result = await this.thumbnailExtractor.extractKeyframes({
+      videoId,
+      intervalSec: input.intervalSec,
+      maxFrames: input.maxFrames,
+      imageFormat: input.imageFormat,
+      width: input.width,
+    });
+
+    return {
+      videoId: result.videoId,
+      framesExtracted: result.framesExtracted,
+      assets: result.assets.map((asset) => ({
+        assetId: asset.assetId,
+        filePath: asset.filePath,
+        timestampSec: asset.timestampSec ?? 0,
+        width: asset.width,
+        height: asset.height,
+        fileSizeBytes: asset.fileSizeBytes,
+      })),
+      durationMs: result.durationMs,
+      provenance: this.makeProvenance("none", false, ["Keyframes were extracted locally via ffmpeg."]),
+    };
+  }
+
+  async mediaStoreHealth(): Promise<MediaStoreHealthOutput> {
+    const stats = this.mediaStore.getStats();
+    let ffmpegAvailable = false;
+    let ffmpegVersion: string | undefined;
+    let ytdlpAvailable = false;
+    let ytdlpVersion: string | undefined;
+
+    try {
+      const probe = await this.thumbnailExtractor.probe();
+      ffmpegAvailable = true;
+      ffmpegVersion = probe.ffmpeg;
+    } catch {
+      ffmpegAvailable = false;
+    }
+
+    try {
+      const probe = await this.mediaDownloader.probe();
+      ytdlpAvailable = true;
+      ytdlpVersion = probe.version;
+    } catch {
+      ytdlpAvailable = false;
+    }
+
+    return {
+      dataDir: this.mediaStore.dataDir,
+      assetsDir: this.mediaStore.assetsDir,
+      stats: {
+        totalAssets: stats.totalAssets,
+        totalSizeBytes: stats.totalSizeBytes,
+        videoCount: stats.videoCount,
+        byKind: stats.byKind,
+      },
+      ffmpegAvailable,
+      ffmpegVersion,
+      ytdlpAvailable,
+      ytdlpVersion,
+      provenance: this.makeProvenance("none", !(ffmpegAvailable && ytdlpAvailable), [
+        ffmpegAvailable ? `ffmpeg available: ${ffmpegVersion}` : "ffmpeg not detected",
+        ytdlpAvailable ? `yt-dlp available: ${ytdlpVersion}` : "yt-dlp not detected",
+      ]),
+    };
   }
 
   async scoreHookPatterns(input: ScoreHookPatternsInput, options: ServiceOptions = {}): Promise<ScoreHookPatternsOutput> {
@@ -1642,7 +1847,7 @@ export class YouTubeService {
       options,
     );
 
-    // Merge && deduplicate
+    // Merge and deduplicate
     const seen = new Set<string>();
     const allResults = [...recentSearch.results, ...topSearch.results];
     const deduped = allResults.filter((item) => {
@@ -1651,7 +1856,7 @@ export class YouTubeService {
       return true;
     });
 
-    // Enrich with inspect for tags && engagement when possible
+    // Enrich with inspect for tags and engagement when possible
     const enriched: TrendingVideo[] = [];
     const provenances: Provenance[] = [recentSearch.provenance, topSearch.provenance];
 
@@ -1699,7 +1904,7 @@ export class YouTubeService {
     const contentGaps = detectContentGaps(enriched, niche);
     const formatBreakdown = computeFormatBreakdown(enriched);
 
-    // Keywords && title patterns from enriched results
+    // Keywords and title patterns from enriched results
     const videoRecords = enriched.map((v) => ({
       videoId: v.videoId,
       title: v.title,
@@ -1722,7 +1927,7 @@ export class YouTubeService {
     );
     if (!this.api.isConfigured()) {
       limitations.push(
-        "Running without YOUTUBE_API_KEY — tag data && some engagement metrics may be missing from yt-dlp fallback.",
+        "Running without YOUTUBE_API_KEY — tag data and some engagement metrics may be missing from yt-dlp fallback.",
       );
     }
     if (enriched.length < 10) {
@@ -2327,7 +2532,7 @@ export class YouTubeService {
       videoId: `dryRunVid${index}`.padEnd(11, "0").slice(0, 11),
       title: `${query} result ${index + 1}`,
       channelId: "UC_x5XG1OV2P6uZZ5FSM9Ttw",
-      channelTitle: "youtube-mcp",
+      channelTitle: "vidlens-mcp",
       publishedAt: "2026-03-01T10:00:00.000Z",
       durationSec: 420 + index * 60,
       views: 10000 - index * 500,
@@ -2346,7 +2551,7 @@ export class YouTubeService {
       videoId,
       title: "Dry-run sample video",
       channelId: "UC_x5XG1OV2P6uZZ5FSM9Ttw",
-      channelTitle: "youtube-mcp",
+      channelTitle: "vidlens-mcp",
       publishedAt: "2026-03-01T10:00:00.000Z",
       durationSec: 642,
       views: 125000,
@@ -2431,12 +2636,12 @@ export class YouTubeService {
       sourceType: "manual_caption",
       confidence: 0.93,
       transcriptText:
-        "Today I'm going to show you how to research YouTube titles that actually earn clicks without resorting to clickbait. We'll look at patterns, compare examples, && leave with a checklist you can reuse.",
+        "Today I'm going to show you how to research YouTube titles that actually earn clicks without resorting to clickbait. We'll look at patterns, compare examples, and leave with a checklist you can reuse.",
       segments: [
         { tStartSec: 0, tEndSec: 9, text: "Today I'm going to show you how to research YouTube titles that actually earn clicks without resorting to clickbait." },
-        { tStartSec: 9, tEndSec: 18, text: "We'll look at patterns, compare examples, && leave with a checklist you can reuse." },
+        { tStartSec: 9, tEndSec: 18, text: "We'll look at patterns, compare examples, and leave with a checklist you can reuse." },
         { tStartSec: 18, tEndSec: 34, text: "First, start by mapping titles that use a clear promise, proof point, or surprising contrast." },
-        { tStartSec: 34, tEndSec: 52, text: "Then compare the opening hook && audience comments to see whether the title matched the payoff." },
+        { tStartSec: 34, tEndSec: 52, text: "Then compare the opening hook and audience comments to see whether the title matched the payoff." },
       ],
       chapters: [
         { title: "Intro", tStartSec: 0, tEndSec: 18 },
@@ -2450,7 +2655,7 @@ export class YouTubeService {
       {
         commentId: "comment-1",
         author: "Builder One",
-        text: "Great breakdown. Super clear && helpful.",
+        text: "Great breakdown. Super clear and helpful.",
         likeCount: 12,
         publishedAt: "2026-03-01T10:00:00.000Z",
       },
@@ -2481,7 +2686,7 @@ export class YouTubeService {
     return {
       playlistId,
       title: "Dry-run playlist",
-      channelTitle: "youtube-mcp",
+      channelTitle: "vidlens-mcp",
       videoCountReported: 3,
       videos: this.sampleChannelVideos("UC_x5XG1OV2P6uZZ5FSM9Ttw"),
     };
@@ -2495,7 +2700,7 @@ export class YouTubeService {
       importReadiness: {
         canImport: true,
         status: "ready",
-        summary: "Dry-run transcript is importable && should chunk normally for semantic search.",
+        summary: "Dry-run transcript is importable and should chunk normally for semantic search.",
         suggestedCollectionId: TranscriptKnowledgeBase.videosCollectionId({ videoIdsOrUrls: [videoId] }),
       },
       transcript: {

@@ -171,13 +171,13 @@ export function readPackageMetadata(): PackageMetadata {
       description?: string;
     };
     return {
-      name: packageJson.name ?? "youtube-mcp",
+      name: packageJson.name ?? "vidlens-mcp",
       version: packageJson.version ?? "0.0.0",
       description: packageJson.description,
     };
   } catch {
     return {
-      name: "youtube-mcp",
+      name: "vidlens-mcp",
       version: "0.0.0",
     };
   }
@@ -200,12 +200,12 @@ export function keyTransparencySummary(): Array<{ key: string; unlocks: string; 
 
 export function resolveDefaultDataDir(homeDir: string, platform: NodeJS.Platform): string {
   if (platform === "darwin") {
-    return join(homeDir, "Library", "Application Support", "youtube-mcp");
+    return join(homeDir, "Library", "Application Support", "vidlens-mcp");
   }
   if (platform === "win32") {
-    return join(homeDir, "AppData", "Roaming", "youtube-mcp");
+    return join(homeDir, "AppData", "Roaming", "vidlens-mcp");
   }
-  return join(homeDir, ".local", "share", "youtube-mcp");
+  return join(homeDir, ".local", "share", "vidlens-mcp");
 }
 
 export function resolveClaudeDesktopConfigPath(homeDir: string, platform: NodeJS.Platform, env: NodeJS.ProcessEnv): string | undefined {

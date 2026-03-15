@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { YouTubeService } from "../lib/youtube-service.js";
 
-const dataDir = mkdtempSync(join(tmpdir(), "youtube-mcp-dryrun-"));
+const dataDir = mkdtempSync(join(tmpdir(), "vidlens-mcp-dryrun-"));
 const service = new YouTubeService({ dryRun: true, dataDir });
 const sampleVideo = "dQw4w9WgXcQ";
 const sampleChannel = "@GoogleDevelopers";

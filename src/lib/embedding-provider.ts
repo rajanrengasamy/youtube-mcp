@@ -22,7 +22,7 @@ export function resolveEmbeddingSelection(input?: {
   embeddingModel?: string;
   embeddingDimensions?: number;
 }): EmbeddingSelection {
-  const kind = (input?.embeddingProvider ?? process.env.YOUTUBE_MCP_EMBEDDING_PROVIDER ?? "local").toLowerCase();
+  const kind = (input?.embeddingProvider ?? process.env.VIDLENS_EMBEDDING_PROVIDER ?? "local").toLowerCase();
   if (kind === "gemini") {
     return {
       kind: "gemini",
