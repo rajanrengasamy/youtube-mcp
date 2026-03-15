@@ -510,6 +510,70 @@ export const tools: Tool[] = [
       additionalProperties: false,
     },
   },
+  // ── Visual Search tools ──────────────────────────────────
+  {
+    name: "indexVisualContent",
+    description: "Build a real visual index for a video using extracted frames, Apple Vision OCR, Apple Vision feature prints, and optional Gemini frame descriptions. Returns frame evidence with local image paths.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        videoIdOrUrl: { type: "string", description: "Video ID or URL to index visually" },
+        intervalSec: { type: "number", minimum: 2, maximum: 3600, description: "Frame sampling interval in seconds (default 20)" },
+        maxFrames: { type: "number", minimum: 1, maximum: 100, description: "Maximum frames to analyze (default 12)" },
+        imageFormat: { type: "string", enum: ["jpg", "png", "webp"] },
+        width: { type: "number", minimum: 160, maximum: 3840 },
+        autoDownload: { type: "boolean", description: "Automatically download a small local video copy if none exists (default true)" },
+        downloadFormat: { type: "string", enum: ["best_video", "worst_video"], description: "Video format used if auto-download is needed (default worst_video)" },
+        forceReindex: { type: "boolean", description: "Re-run OCR/description analysis even if frames are already indexed" },
+        includeGeminiDescriptions: { type: "boolean", description: "Use Gemini to describe each frame when a Gemini key is configured" },
+        includeGeminiEmbeddings: { type: "boolean", description: "Generate Gemini embeddings over OCR/description text for semantic retrieval (default true when Gemini key is available)" },
+        dryRun: { type: "boolean" },
+      },
+      required: ["videoIdOrUrl"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "searchVisualContent",
+    description: "Search the actual visual content of a video or your indexed frame library. Uses Apple Vision OCR, optional Gemini frame descriptions, and optional Gemini semantic embeddings. Always returns frame/image evidence with timestamps.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Visual search query, e.g. 'whiteboard diagram' or 'slide that says title research checklist'" },
+        videoIdOrUrl: { type: "string", description: "Optional video scope. If provided, the server can auto-index this video if needed." },
+        maxResults: { type: "number", minimum: 1, maximum: 20 },
+        minScore: { type: "number", minimum: 0, maximum: 1 },
+        autoIndexIfNeeded: { type: "boolean", description: "If scoped to a video and no visual index exists yet, build it automatically (default true)" },
+        intervalSec: { type: "number", minimum: 2, maximum: 3600, description: "Frame interval to use if auto-indexing is triggered" },
+        maxFrames: { type: "number", minimum: 1, maximum: 100, description: "Frame cap to use if auto-indexing is triggered" },
+        imageFormat: { type: "string", enum: ["jpg", "png", "webp"] },
+        width: { type: "number", minimum: 160, maximum: 3840 },
+        autoDownload: { type: "boolean" },
+        downloadFormat: { type: "string", enum: ["best_video", "worst_video"] },
+        includeGeminiDescriptions: { type: "boolean" },
+        includeGeminiEmbeddings: { type: "boolean" },
+        dryRun: { type: "boolean" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "findSimilarFrames",
+    description: "Find frames that visually look like a reference frame using Apple Vision image feature prints. Accepts a frame assetId or a direct framePath and returns image-backed matches.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        assetId: { type: "string", description: "Reference keyframe asset ID" },
+        framePath: { type: "string", description: "Reference image path on disk" },
+        videoIdOrUrl: { type: "string", description: "Optional video scope for similarity search" },
+        maxResults: { type: "number", minimum: 1, maximum: 20 },
+        minSimilarity: { type: "number", minimum: 0, maximum: 1 },
+        dryRun: { type: "boolean" },
+      },
+      additionalProperties: false,
+    },
+  },
   // ── Comment Knowledge Base Tools ──
   {
     name: "importComments",
@@ -1145,6 +1209,55 @@ async function executeTool(
         provenance,
       };
     }
+
+    case "indexVisualContent":
+      return service.indexVisualContent(
+        {
+          videoIdOrUrl: readString(args, "videoIdOrUrl"),
+          intervalSec: optionalNumber(args, "intervalSec"),
+          maxFrames: optionalNumber(args, "maxFrames"),
+          imageFormat: optionalEnum(args, "imageFormat", ["jpg", "png", "webp"]),
+          width: optionalNumber(args, "width"),
+          autoDownload: optionalBoolean(args, "autoDownload"),
+          downloadFormat: optionalEnum(args, "downloadFormat", ["best_video", "worst_video"]),
+          forceReindex: optionalBoolean(args, "forceReindex"),
+          includeGeminiDescriptions: optionalBoolean(args, "includeGeminiDescriptions"),
+          includeGeminiEmbeddings: optionalBoolean(args, "includeGeminiEmbeddings"),
+        },
+        { dryRun },
+      );
+
+    case "searchVisualContent":
+      return service.searchVisualContent(
+        {
+          query: readString(args, "query"),
+          videoIdOrUrl: optionalString(args, "videoIdOrUrl"),
+          maxResults: optionalNumber(args, "maxResults"),
+          minScore: optionalNumber(args, "minScore"),
+          autoIndexIfNeeded: optionalBoolean(args, "autoIndexIfNeeded"),
+          intervalSec: optionalNumber(args, "intervalSec"),
+          maxFrames: optionalNumber(args, "maxFrames"),
+          imageFormat: optionalEnum(args, "imageFormat", ["jpg", "png", "webp"]),
+          width: optionalNumber(args, "width"),
+          autoDownload: optionalBoolean(args, "autoDownload"),
+          downloadFormat: optionalEnum(args, "downloadFormat", ["best_video", "worst_video"]),
+          includeGeminiDescriptions: optionalBoolean(args, "includeGeminiDescriptions"),
+          includeGeminiEmbeddings: optionalBoolean(args, "includeGeminiEmbeddings"),
+        },
+        { dryRun },
+      );
+
+    case "findSimilarFrames":
+      return service.findSimilarFrames(
+        {
+          assetId: optionalString(args, "assetId"),
+          framePath: optionalString(args, "framePath"),
+          videoIdOrUrl: optionalString(args, "videoIdOrUrl"),
+          maxResults: optionalNumber(args, "maxResults"),
+          minSimilarity: optionalNumber(args, "minSimilarity"),
+        },
+        { dryRun },
+      );
 
     default:
       throw new Error(`Unknown tool: ${toolName}`);

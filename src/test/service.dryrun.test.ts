@@ -32,6 +32,9 @@ test("V1 and V2 tools return structured dry-run outputs", async () => {
     importReadiness,
     dossier,
     systemHealth,
+    visualIndex,
+    visualSearch,
+    similarFrames,
   ] = await Promise.all([
     service.findVideos({ query: "youtube mcp", maxResults: 3 }),
     service.inspectVideo({ videoIdOrUrl: sampleVideo }),
@@ -52,6 +55,9 @@ test("V1 and V2 tools return structured dry-run outputs", async () => {
     service.checkImportReadiness({ videoIdOrUrl: sampleVideo }),
     service.buildVideoDossier({ videoIdOrUrl: sampleVideo, commentSampleSize: 3 }),
     service.checkSystemHealth(),
+    service.indexVisualContent({ videoIdOrUrl: sampleVideo, maxFrames: 3 }),
+    service.searchVisualContent({ query: "whiteboard framework", videoIdOrUrl: sampleVideo, maxResults: 2 }),
+    service.findSimilarFrames({ assetId: "dry-frame-dQw4w9WgXcQ-2", maxResults: 1 }),
   ]);
 
   const activated = await service.setActiveCollection({ collectionId: videoImport.collectionId });
@@ -96,6 +102,17 @@ test("V1 and V2 tools return structured dry-run outputs", async () => {
   assert.equal(dossier.comments?.totalFetched, 3);
   assert.equal(dossier.audienceSentiment !== undefined, true);
   assert.equal(systemHealth.overallStatus, "ready");
+  assert.equal(visualIndex.videoId, sampleVideo);
+  assert.equal(visualIndex.indexing.framesIndexed, 3);
+  assert.equal(visualIndex.indexing.embeddingProvider, "gemini");
+  assert.equal(visualIndex.evidence.length, 3);
+  assert.equal(visualSearch.results.length > 0, true);
+  assert.equal(visualSearch.searchMeta.queryMode, "gemini_semantic_plus_lexical");
+  assert.equal(visualSearch.searchMeta.embeddingProvider, "gemini");
+  assert.equal(typeof visualSearch.results[0]?.lexicalScore, "number");
+  assert.equal(typeof visualSearch.results[0]?.semanticScore, "number");
+  assert.equal(similarFrames.results.length, 1);
+  assert.equal(similarFrames.searchMeta.similarityEngine, "apple_vision_feature_print");
 
   // V3 Trends & Discovery dry-run
   const trends = await service.discoverNicheTrends({ niche: "AI coding tools" });

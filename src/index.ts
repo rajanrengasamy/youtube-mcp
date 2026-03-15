@@ -4,4 +4,5 @@ export { CommentKnowledgeBase } from "./lib/comment-knowledge-base.js";
 export { MediaStore } from "./lib/media-store.js";
 export { MediaDownloader } from "./lib/media-downloader.js";
 export { ThumbnailExtractor } from "./lib/thumbnail-extractor.js";
+export { VisualIndexStore, VisualSearchEngine } from "./lib/visual-search.js";
 export * from "./lib/types.js";

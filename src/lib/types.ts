@@ -1143,3 +1143,130 @@ export interface MediaStoreHealthOutput {
   ytdlpVersion?: string;
   provenance: Provenance;
 }
+
+export interface IndexVisualContentInput {
+  videoIdOrUrl: string;
+  intervalSec?: number;
+  maxFrames?: number;
+  imageFormat?: "jpg" | "png" | "webp";
+  width?: number;
+  autoDownload?: boolean;
+  downloadFormat?: "best_video" | "worst_video";
+  forceReindex?: boolean;
+  includeGeminiDescriptions?: boolean;
+  includeGeminiEmbeddings?: boolean;
+}
+
+export interface IndexVisualContentOutput {
+  videoId: string;
+  sourceVideo: {
+    videoId: string;
+    url: string;
+    title?: string;
+    localVideoPath?: string;
+  };
+  indexing: {
+    framesExtracted: number;
+    framesAnalyzed: number;
+    framesIndexed: number;
+    intervalSec: number;
+    maxFrames: number;
+    autoDownloaded: boolean;
+    descriptionProvider: "none" | "gemini";
+    descriptionModel?: string;
+    embeddingProvider: "none" | "gemini";
+    embeddingModel?: string;
+    embeddingDimensions?: number;
+  };
+  evidence: Array<{
+    frameAssetId?: string;
+    framePath: string;
+    timestampSec: number;
+    timestampLabel: string;
+    ocrText?: string;
+    visualDescription?: string;
+  }>;
+  limitations: string[];
+  provenance: Provenance;
+}
+
+export interface SearchVisualContentInput {
+  query: string;
+  videoIdOrUrl?: string;
+  maxResults?: number;
+  minScore?: number;
+  autoIndexIfNeeded?: boolean;
+  intervalSec?: number;
+  maxFrames?: number;
+  imageFormat?: "jpg" | "png" | "webp";
+  width?: number;
+  autoDownload?: boolean;
+  downloadFormat?: "best_video" | "worst_video";
+  includeGeminiDescriptions?: boolean;
+  includeGeminiEmbeddings?: boolean;
+}
+
+export interface SearchVisualContentOutput {
+  query: string;
+  results: Array<{
+    score: number;
+    lexicalScore: number;
+    semanticScore?: number;
+    matchedOn: Array<"ocr" | "description" | "semantic">;
+    videoId: string;
+    sourceVideoUrl: string;
+    sourceVideoTitle?: string;
+    frameAssetId?: string;
+    framePath: string;
+    timestampSec: number;
+    timestampLabel: string;
+    explanation: string;
+    ocrText?: string;
+    visualDescription?: string;
+  }>;
+  searchMeta: {
+    searchedFrames: number;
+    searchedVideos: number;
+    descriptionProvider: "none" | "gemini" | "mixed";
+    embeddingProvider: "none" | "gemini" | "mixed";
+    embeddingModel?: string;
+    queryMode: "ocr_description_lexical" | "gemini_semantic_plus_lexical";
+  };
+  limitations: string[];
+  provenance: Provenance;
+}
+
+export interface FindSimilarFramesInput {
+  assetId?: string;
+  framePath?: string;
+  videoIdOrUrl?: string;
+  maxResults?: number;
+  minSimilarity?: number;
+}
+
+export interface FindSimilarFramesOutput {
+  reference: {
+    assetId?: string;
+    framePath: string;
+    videoId?: string;
+  };
+  results: Array<{
+    similarity: number;
+    videoId: string;
+    sourceVideoUrl: string;
+    sourceVideoTitle?: string;
+    frameAssetId?: string;
+    framePath: string;
+    timestampSec: number;
+    timestampLabel: string;
+    explanation: string;
+    ocrText?: string;
+    visualDescription?: string;
+  }>;
+  searchMeta: {
+    searchedFrames: number;
+    similarityEngine: "apple_vision_feature_print";
+  };
+  limitations: string[];
+  provenance: Provenance;
+}

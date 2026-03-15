@@ -29,6 +29,7 @@ import { TranscriptKnowledgeBase } from "./knowledge-base.js";
 import { MediaStore } from "./media-store.js";
 import { MediaDownloader } from "./media-downloader.js";
 import { ThumbnailExtractor } from "./thumbnail-extractor.js";
+import { VisualSearchEngine } from "./visual-search.js";
 import {
   parseChannelRef,
   parsePlaylistId,
@@ -66,6 +67,8 @@ import type {
   ExploreNicheCompetitorsOutput,
   ExtractKeyframesInput,
   ExtractKeyframesOutput,
+  FindSimilarFramesInput,
+  FindSimilarFramesOutput,
   FindVideosInput,
   FindVideosOutput,
   GracefulError,
@@ -73,6 +76,8 @@ import type {
   ImportCommentsOutput,
   ImportPlaylistOutput,
   ImportVideosOutput,
+  IndexVisualContentInput,
+  IndexVisualContentOutput,
   InspectChannelInput,
   InspectChannelOutput,
   InspectVideoInput,
@@ -112,6 +117,8 @@ import type {
   SearchCommentsOutput,
   SearchTranscriptsInput,
   SearchTranscriptsOutput,
+  SearchVisualContentInput,
+  SearchVisualContentOutput,
   ServiceOptions,
   SetActiveCollectionInput,
   SetActiveCollectionOutput,
@@ -160,6 +167,7 @@ export class YouTubeService {
   private readonly mediaStore: MediaStore;
   private readonly mediaDownloader: MediaDownloader;
   private readonly thumbnailExtractor: ThumbnailExtractor;
+  private readonly visualSearch: VisualSearchEngine;
 
   constructor(config: YouTubeServiceConfig = {}) {
     this.api = new YouTubeApiClient({ apiKey: config.apiKey ?? process.env.YOUTUBE_API_KEY });
@@ -171,6 +179,7 @@ export class YouTubeService {
     this.mediaStore = new MediaStore({ dataDir: config.dataDir });
     this.mediaDownloader = new MediaDownloader(this.mediaStore, config.ytDlpBinary);
     this.thumbnailExtractor = new ThumbnailExtractor(this.mediaStore);
+    this.visualSearch = new VisualSearchEngine(this.mediaStore, this.mediaDownloader, this.thumbnailExtractor, { dataDir: config.dataDir });
   }
 
   async findVideos(input: FindVideosInput, options: ServiceOptions = {}): Promise<FindVideosOutput> {
@@ -1533,6 +1542,156 @@ export class YouTubeService {
     };
   }
 
+  async indexVisualContent(input: IndexVisualContentInput, options: ServiceOptions = {}): Promise<IndexVisualContentOutput> {
+    const videoId = this.requireVideoId(input.videoIdOrUrl);
+
+    if (this.isDryRun(options)) {
+      return this.sampleVisualIndex(videoId);
+    }
+
+    const sourceVideo = await this.inspectVideo({ videoIdOrUrl: videoId }, options).catch(() => undefined);
+    const indexed = await this.visualSearch.indexVideo({
+      videoId,
+      sourceVideoTitle: sourceVideo?.video.title,
+      sourceVideoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      intervalSec: input.intervalSec,
+      maxFrames: input.maxFrames,
+      imageFormat: input.imageFormat,
+      width: input.width,
+      autoDownload: input.autoDownload,
+      downloadFormat: input.downloadFormat,
+      forceReindex: input.forceReindex,
+      includeGeminiDescriptions: input.includeGeminiDescriptions,
+      includeGeminiEmbeddings: input.includeGeminiEmbeddings,
+    });
+
+    return {
+      videoId,
+      sourceVideo: {
+        videoId,
+        url: indexed.sourceVideoUrl,
+        title: indexed.sourceVideoTitle,
+        localVideoPath: indexed.videoAssetPath,
+      },
+      indexing: {
+        framesExtracted: indexed.framesExtracted,
+        framesAnalyzed: indexed.framesAnalyzed,
+        framesIndexed: indexed.framesIndexed,
+        intervalSec: indexed.intervalSec,
+        maxFrames: indexed.maxFrames,
+        autoDownloaded: indexed.autoDownloaded,
+        descriptionProvider: indexed.descriptionProvider,
+        descriptionModel: indexed.descriptionModel,
+        embeddingProvider: indexed.embeddingProvider,
+        embeddingModel: indexed.embeddingModel,
+        embeddingDimensions: indexed.embeddingDimensions,
+      },
+      evidence: indexed.evidence.map((frame) => ({
+        frameAssetId: frame.frameAssetId,
+        framePath: frame.framePath,
+        timestampSec: frame.timestampSec,
+        timestampLabel: formatTimestamp(frame.timestampSec),
+        ocrText: frame.ocrText,
+        visualDescription: frame.visualDescription,
+      })),
+      limitations: indexed.limitations,
+      provenance: this.makeProvenance("none", indexed.descriptionProvider !== "gemini", [
+        "Frames extracted locally with ffmpeg.",
+        "OCR + image feature prints computed with Apple Vision.",
+        indexed.descriptionProvider === "gemini"
+          ? `Gemini descriptions enabled (${indexed.descriptionModel}).`
+          : "Gemini descriptions disabled; OCR-only frame indexing.",
+      ]),
+    };
+  }
+
+  async searchVisualContent(input: SearchVisualContentInput, options: ServiceOptions = {}): Promise<SearchVisualContentOutput> {
+    const query = input.query?.trim();
+    if (!query) {
+      throw this.invalidInput("query cannot be empty");
+    }
+
+    const videoId = input.videoIdOrUrl ? this.requireVideoId(input.videoIdOrUrl) : undefined;
+
+    if (this.isDryRun(options)) {
+      return this.sampleVisualSearch(query, videoId);
+    }
+
+    const result = await this.visualSearch.searchText({
+      query,
+      videoId,
+      maxResults: input.maxResults,
+      minScore: input.minScore,
+      autoIndexIfNeeded: input.autoIndexIfNeeded,
+      indexIfNeeded: {
+        intervalSec: input.intervalSec,
+        maxFrames: input.maxFrames,
+        imageFormat: input.imageFormat,
+        width: input.width,
+        autoDownload: input.autoDownload,
+        downloadFormat: input.downloadFormat,
+        includeGeminiDescriptions: input.includeGeminiDescriptions,
+        includeGeminiEmbeddings: input.includeGeminiEmbeddings,
+      },
+    });
+
+    return {
+      query,
+      results: result.results,
+      searchMeta: {
+        searchedFrames: result.searchedFrames,
+        searchedVideos: result.searchedVideos,
+        descriptionProvider: result.descriptionProvider,
+        embeddingProvider: result.embeddingProvider,
+        embeddingModel: result.embeddingModel,
+        queryMode: result.queryMode,
+      },
+      limitations: result.limitations,
+      provenance: this.makeProvenance("none", result.descriptionProvider === "none" && result.embeddingProvider === "none", [
+        "Search ran over the visual frame index, not transcript embeddings.",
+        "Each match includes a local frame path and timestamp for direct visual evidence.",
+        result.embeddingProvider !== "none"
+          ? `Gemini semantic retrieval active (${result.embeddingModel ?? "gemini-embedding-2-preview"}).`
+          : result.descriptionProvider !== "none"
+            ? "Gemini frame descriptions enhance lexical search but no embedding retrieval."
+            : "Current index has OCR-backed lexical matches only.",
+      ]),
+    };
+  }
+
+  async findSimilarFrames(input: FindSimilarFramesInput, options: ServiceOptions = {}): Promise<FindSimilarFramesOutput> {
+    if (!input.assetId && !input.framePath) {
+      throw this.invalidInput("Provide either assetId or framePath.");
+    }
+
+    if (this.isDryRun(options)) {
+      return this.sampleSimilarFrames(input.assetId, input.framePath);
+    }
+
+    const videoId = input.videoIdOrUrl ? this.requireVideoId(input.videoIdOrUrl) : undefined;
+    const result = await this.visualSearch.findSimilarFrames({
+      assetId: input.assetId,
+      framePath: input.framePath,
+      videoId,
+      maxResults: input.maxResults,
+      minSimilarity: input.minSimilarity,
+    });
+
+    return {
+      reference: result.reference,
+      results: result.results,
+      searchMeta: {
+        searchedFrames: result.searchedFrames,
+        similarityEngine: "apple_vision_feature_print",
+      },
+      limitations: result.limitations,
+      provenance: this.makeProvenance("none", false, [
+        "Similarity was computed with Apple Vision feature prints.",
+        "Results are image-to-image matches and include file paths for inspection.",
+      ]),
+    };
+  }
+
   async scoreHookPatterns(input: ScoreHookPatternsInput, options: ServiceOptions = {}): Promise<ScoreHookPatternsOutput> {
     if (!Array.isArray(input.videoIdsOrUrls) || input.videoIdsOrUrls.length === 0) {
       throw this.invalidInput("videoIdsOrUrls must contain at least one video");
@@ -2747,6 +2906,148 @@ export class YouTubeService {
       provenance: this.makeProvenance("none", false, ["Dry-run mode enabled. No external calls were made."]),
     };
   }
+
+  private sampleVisualIndex(videoId: string): IndexVisualContentOutput {
+    return {
+      videoId,
+      sourceVideo: {
+        videoId,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        title: "Dry-run sample video",
+        localVideoPath: join(this.mediaStore.videoDir(videoId), `${videoId}.mp4`),
+      },
+      indexing: {
+        framesExtracted: 3,
+        framesAnalyzed: 3,
+        framesIndexed: 3,
+        intervalSec: 20,
+        maxFrames: 3,
+        autoDownloaded: true,
+        descriptionProvider: "gemini",
+        descriptionModel: process.env.VIDLENS_GEMINI_VISION_MODEL || "gemini-2.5-flash",
+        embeddingProvider: "gemini",
+        embeddingModel: process.env.YOUTUBE_MCP_GEMINI_MODEL || "gemini-embedding-2-preview",
+        embeddingDimensions: 768,
+      },
+      evidence: [
+        {
+          frameAssetId: `dry-frame-${videoId}-1`,
+          framePath: join(this.mediaStore.videoDir(videoId), "keyframes", `${videoId}_0000_0s.jpg`),
+          timestampSec: 0,
+          timestampLabel: "0:00",
+          ocrText: "TITLE RESEARCH CHECKLIST",
+          visualDescription: "A presentation slide with the heading TITLE RESEARCH CHECKLIST and three bullet points.",
+        },
+        {
+          frameAssetId: `dry-frame-${videoId}-2`,
+          framePath: join(this.mediaStore.videoDir(videoId), "keyframes", `${videoId}_0001_20s.jpg`),
+          timestampSec: 20,
+          timestampLabel: "0:20",
+          ocrText: "promise proof contrast",
+          visualDescription: "A whiteboard-style frame showing a three-column framework: promise, proof, contrast.",
+        },
+        {
+          frameAssetId: `dry-frame-${videoId}-3`,
+          framePath: join(this.mediaStore.videoDir(videoId), "keyframes", `${videoId}_0002_40s.jpg`),
+          timestampSec: 40,
+          timestampLabel: "0:40",
+          ocrText: "compare opening hook comments",
+          visualDescription: "A browser screenshot comparing opening hooks and comment sentiment side by side.",
+        },
+      ],
+      limitations: [
+        "Dry-run sample: no real frames were extracted.",
+        "Real mode uses Apple Vision OCR and optional Gemini frame descriptions.",
+      ],
+      provenance: this.makeProvenance("none", false, ["Dry-run mode enabled. No external calls were made."]),
+    };
+  }
+
+  private sampleVisualSearch(query: string, videoId = "dQw4w9WgXcQ"): SearchVisualContentOutput {
+    return {
+      query,
+      results: [
+        {
+          score: 0.91,
+          lexicalScore: 0.82,
+          semanticScore: 0.95,
+          matchedOn: ["ocr", "description", "semantic"],
+          videoId,
+          sourceVideoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          sourceVideoTitle: "Dry-run sample video",
+          frameAssetId: `dry-frame-${videoId}-2`,
+          framePath: join(this.mediaStore.videoDir(videoId), "keyframes", `${videoId}_0001_20s.jpg`),
+          timestampSec: 20,
+          timestampLabel: "0:20",
+          explanation: "OCR matched: promise proof contrast • Visual description matched: A whiteboard-style frame showing a three-column framework: promise, proof, contrast. • Gemini semantic retrieval matched frame text.",
+          ocrText: "promise proof contrast",
+          visualDescription: "A whiteboard-style frame showing a three-column framework: promise, proof, contrast.",
+        },
+        {
+          score: 0.72,
+          lexicalScore: 0.55,
+          semanticScore: 0.81,
+          matchedOn: ["description", "semantic"],
+          videoId,
+          sourceVideoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          sourceVideoTitle: "Dry-run sample video",
+          frameAssetId: `dry-frame-${videoId}-3`,
+          framePath: join(this.mediaStore.videoDir(videoId), "keyframes", `${videoId}_0002_40s.jpg`),
+          timestampSec: 40,
+          timestampLabel: "0:40",
+          explanation: "Visual description matched: A browser screenshot comparing opening hooks and comment sentiment side by side. • Gemini semantic retrieval matched frame text.",
+          ocrText: "compare opening hook comments",
+          visualDescription: "A browser screenshot comparing opening hooks and comment sentiment side by side.",
+        },
+      ],
+      searchMeta: {
+        searchedFrames: 3,
+        searchedVideos: 1,
+        descriptionProvider: "gemini",
+        embeddingProvider: "gemini",
+        embeddingModel: process.env.YOUTUBE_MCP_GEMINI_MODEL || "gemini-embedding-2-preview",
+        queryMode: "gemini_semantic_plus_lexical",
+      },
+      limitations: [
+        "Dry-run sample only. Real mode returns actual local frame paths as evidence.",
+      ],
+      provenance: this.makeProvenance("none", false, ["Dry-run mode enabled. No external calls were made."]),
+    };
+  }
+
+  private sampleSimilarFrames(assetId?: string, framePath?: string): FindSimilarFramesOutput {
+    const videoId = "dQw4w9WgXcQ";
+    return {
+      reference: {
+        assetId,
+        framePath: framePath ?? join(this.mediaStore.videoDir(videoId), "keyframes", `${videoId}_0001_20s.jpg`),
+        videoId,
+      },
+      results: [
+        {
+          similarity: 0.943,
+          videoId,
+          sourceVideoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          sourceVideoTitle: "Dry-run sample video",
+          frameAssetId: `dry-frame-${videoId}-3`,
+          framePath: join(this.mediaStore.videoDir(videoId), "keyframes", `${videoId}_0002_40s.jpg`),
+          timestampSec: 40,
+          timestampLabel: "0:40",
+          explanation: "Apple Vision feature-print similarity 0.943 • A browser screenshot comparing opening hooks and comment sentiment side by side.",
+          ocrText: "compare opening hook comments",
+          visualDescription: "A browser screenshot comparing opening hooks and comment sentiment side by side.",
+        },
+      ],
+      searchMeta: {
+        searchedFrames: 3,
+        similarityEngine: "apple_vision_feature_print",
+      },
+      limitations: [
+        "Dry-run sample only. Real mode computes similarity from the reference image itself.",
+      ],
+      provenance: this.makeProvenance("none", false, ["Dry-run mode enabled. No external calls were made."]),
+    };
+  }
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -2756,6 +3057,17 @@ function clamp(value: number, min: number, max: number): number {
 function round(value: number, digits = 1): number {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
+}
+
+function formatTimestamp(value: number): string {
+  const total = Math.max(0, Math.round(value));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function rate(primary: number | undefined, secondary: number | undefined, denominator: number | undefined): number | undefined {

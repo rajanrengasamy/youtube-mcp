@@ -191,6 +191,18 @@ async function main(): Promise<void> {
       name: "extractKeyframes",
       run: () => service.extractKeyframes({ videoIdOrUrl: sampleVideo, intervalSec: 30, maxFrames: 3 }, { dryRun }),
     },
+    {
+      name: "indexVisualContent",
+      run: () => service.indexVisualContent({ videoIdOrUrl: sampleVideo, maxFrames: 3 }, { dryRun }),
+    },
+    {
+      name: "searchVisualContent",
+      run: () => service.searchVisualContent({ query: "whiteboard framework", videoIdOrUrl: sampleVideo, maxResults: 2 }, { dryRun }),
+    },
+    {
+      name: "findSimilarFrames",
+      run: () => service.findSimilarFrames({ assetId: `dry-frame-${sampleVideo}-2`, maxResults: 1 }, { dryRun }),
+    },
   ];
 
   for (const check of checks) {

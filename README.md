@@ -4,14 +4,14 @@
 
 <p align="center">
   <strong>The YouTube intelligence layer for AI agents</strong><br/>
-  <em>Zero config · 37 tools · Three-tier fallback · Actually works</em>
+  <em>Zero config · 40 tools · Three-tier fallback · Transcript + visual search</em>
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/vidlens-mcp"><img src="https://img.shields.io/npm/v/vidlens-mcp?style=flat-square&color=red" alt="npm" /></a>
   <a href="https://github.com/rajanrengasamy/vidlens-mcp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-green?style=flat-square" alt="MCP" /></a>
-  <img src="https://img.shields.io/badge/tools-37-orange?style=flat-square" alt="37 tools" />
+  <img src="https://img.shields.io/badge/tools-40-orange?style=flat-square" alt="40 tools" />
   <img src="https://img.shields.io/badge/zero--config-✓-brightgreen?style=flat-square" alt="Zero Config" />
 </p>
 
@@ -19,7 +19,7 @@
 
 ## 🔍 What is VidLens?
 
-VidLens is a [Model Context Protocol](https://modelcontextprotocol.io/) server that gives AI agents deep, reliable access to YouTube. Not just transcripts — full intelligence: sentiment analysis, trend discovery, semantic search, media assets, and creator analytics.
+VidLens is a [Model Context Protocol](https://modelcontextprotocol.io/) server that gives AI agents deep, reliable access to YouTube. Not just transcripts - full intelligence: sentiment analysis, trend discovery, semantic search, media assets, creator analytics, and image-backed visual search.
 
 **No API key required to start.** Every tool has a three-tier fallback chain (YouTube API → yt-dlp → page extraction) so nothing breaks when quota runs out or keys aren't configured.
 
@@ -29,11 +29,12 @@ VidLens is a [Model Context Protocol](https://modelcontextprotocol.io/) server t
 
 <table>
 <tr><th></th><th>VidLens</th><th>Other YouTube MCP servers</th></tr>
-<tr><td>🔑 <strong>Setup</strong></td><td>✅ Works immediately — no keys needed</td><td>❌ Most require YouTube API key upfront</td></tr>
-<tr><td>🛡️ <strong>Reliability</strong></td><td>✅ Three-tier fallback on every tool</td><td>❌ Single point of failure — API down = broken</td></tr>
-<tr><td>🧠 <strong>Intelligence</strong></td><td>✅ Sentiment, trends, content gaps, hooks</td><td>❌ Raw data dumps — you do the analysis</td></tr>
+<tr><td>🔑 <strong>Setup</strong></td><td>✅ Works immediately - no keys needed</td><td>❌ Most require YouTube API key upfront</td></tr>
+<tr><td>🛡️ <strong>Reliability</strong></td><td>✅ Three-tier fallback on every tool</td><td>❌ Single point of failure - API down = broken</td></tr>
+<tr><td>🧠 <strong>Intelligence</strong></td><td>✅ Sentiment, trends, content gaps, hooks</td><td>❌ Raw data dumps - you do the analysis</td></tr>
 <tr><td>📦 <strong>Token efficiency</strong></td><td>✅ 75-87% smaller responses</td><td>❌ Verbose JSON with thumbnails, etags, junk</td></tr>
-<tr><td>🔬 <strong>Depth</strong></td><td>✅ 37 tools across 8 modules</td><td>⚠️ 1-5 tools, mostly transcripts only</td></tr>
+<tr><td>🔬 <strong>Depth</strong></td><td>✅ 40 tools across 9 modules</td><td>⚠️ 1-5 tools, mostly transcripts only</td></tr>
+<tr><td>🖼️ <strong>Visual evidence</strong></td><td>✅ Returns actual frame paths + timestamps, not just text hits</td><td>⚠️ Usually transcript-only or raw frame dumps</td></tr>
 <tr><td>⚖️ <strong>Trademark</strong></td><td>✅ Compliant naming</td><td>⚠️ Most violate YouTube trademark</td></tr>
 </table>
 
@@ -51,7 +52,7 @@ This auto-detects your MCP client (Claude Desktop, Cursor, etc.) and configures 
 
 ### 2. Or configure manually
 
-**Claude Desktop** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+**Claude Desktop** - add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -77,25 +78,27 @@ Fully quit and reopen Claude Desktop (or your client). VidLens will appear in th
 > "What's the audience sentiment on this video?"
 >
 > "What's trending in the AI coding niche right now?"
+>
+> "Search this video's visuals for the whiteboard architecture diagram and show me the frame evidence"
 
 ---
 
-## 🧰 Tools — 37 across 8 modules
+## 🧰 Tools - 40 across 9 modules
 
-### 📺 Core — Video & Channel Intelligence
+### 📺 Core - Video & Channel Intelligence
 *Always available, no API key needed*
 
 | Tool | What it does |
 |---|---|
 | `findVideos` | Search YouTube by query with metadata |
-| `inspectVideo` | Deep metadata — tags, engagement, language, category |
+| `inspectVideo` | Deep metadata - tags, engagement, language, category |
 | `inspectChannel` | Channel stats, description, recent uploads |
 | `listChannelCatalog` | Browse a channel's full video library |
 | `readTranscript` | Full transcript with timestamps and chapters |
 | `readComments` | Top comments with likes and engagement |
 | `expandPlaylist` | List all videos in any playlist |
 
-### 🔎 Knowledge Base — Semantic Search
+### 🔎 Knowledge Base - Semantic Search
 *Index transcripts and search across them with natural language*
 
 | Tool | What it does |
@@ -146,6 +149,24 @@ Fully quit and reopen Claude Desktop (or your client). VidLens will appear in th
 | `removeMediaAsset` | Clean up downloaded assets |
 | `extractKeyframes` | Extract key frames from videos |
 | `mediaStoreHealth` | Storage usage and diagnostics |
+
+### 🖼️ Visual Search
+*Three-layer visual intelligence. Not transcript reuse.*
+
+| Tool | What it does |
+|---|---|
+| `indexVisualContent` | Extract frames, run Apple Vision OCR + feature prints, Gemini frame descriptions, and Gemini semantic embeddings |
+| `searchVisualContent` | Search visual frames using semantic embeddings + lexical matching. Returns actual image paths + timestamps as evidence |
+| `findSimilarFrames` | Image-to-image frame similarity using Apple Vision feature prints |
+
+**Three layers, all real:**
+1. **Apple Vision feature prints** — image-to-image similarity (find frames that look alike)
+2. **Gemini 2.5 Flash frame descriptions** — natural language scene understanding per frame
+3. **Gemini semantic embeddings** — 768-dim embedding retrieval over OCR + description text for true text→visual search
+
+**What you always get back:** frame path on disk, timestamp, source video URL/title, match explanation, OCR text, visual description.
+
+**What is NOT happening:** no transcript embeddings are reused for visual search. This is a separate visual index.
 
 ### 💭 Comment Knowledge Base
 *Index and semantically search YouTube comments*
@@ -202,7 +223,7 @@ npx vidlens-mcp version       # Print version
 npx vidlens-mcp help          # Usage guide
 ```
 
-### Doctor — diagnose issues
+### Doctor - diagnose issues
 
 ```bash
 npx vidlens-mcp doctor --no-live
@@ -224,12 +245,13 @@ Checks: Node.js version, yt-dlp availability, API key validation, data directory
 │           VidLens MCP Server            │
 │                                         │
 │  ┌───────────────────────────────────┐  │
-│  │         37 MCP Tools              │  │
+│  │         40 MCP Tools              │  │
 │  │                                   │  │
 │  │  📺 Core          🔎 Knowledge   │  │
 │  │  💬 Sentiment     🎯 Creator     │  │
 │  │  📈 Trends        🎬 Media       │  │
-│  │  💭 Comments      🏥 Diagnostics │  │
+│  │  🖼️ Visual        💭 Comments    │  │
+│  │  🏥 Diagnostics                    │  │
 │  └───────────────┬───────────────────┘  │
 │                  │                       │
 │  ┌───────────────▼───────────────────┐  │
@@ -251,10 +273,11 @@ Every tool attempts all three tiers. If the YouTube API is down or quota is exha
 | Requirement | Status | Notes |
 |---|---|---|
 | **Node.js ≥ 20** | Required | `node --version` to check |
-| **yt-dlp** | Recommended | `brew install yt-dlp` — enables zero-config mode |
-| **ffmpeg** | Optional | Only needed for `extractKeyframes` tool |
+| **yt-dlp** | Recommended | `brew install yt-dlp` - enables zero-config mode |
+| **ffmpeg** | Optional | Needed for frame extraction and visual indexing |
 | **YouTube API key** | Optional | Unlocks comments, better metadata |
-| **Gemini API key** | Optional | Upgrades embedding quality |
+| **Gemini API key** | Optional | Upgrades transcript embeddings and frame descriptions for visual search |
+| **macOS Apple Vision** | Automatic on macOS | Powers native OCR and image similarity for visual search |
 
 ---
 

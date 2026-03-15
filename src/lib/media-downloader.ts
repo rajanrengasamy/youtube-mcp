@@ -3,7 +3,7 @@
  *
  * Downloads go to the MediaStore's asset directory, then get registered in the manifest.
  * This module intentionally does NOT do frame-level visual indexing — it downloads
- * and stores media files. Visual search is a future concern.
+ * and stores media files. Visual search is handled separately by the visual-search layer.
  */
 import { existsSync, readdirSync, statSync, readFileSync } from "node:fs";
 import { join, extname } from "node:path";
