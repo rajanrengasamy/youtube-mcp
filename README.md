@@ -1,17 +1,12 @@
 <p align="center">
-  <img src="assets/vidlens-logo.png" alt="VidLens" width="400" />
-</p>
-
-<p align="center">
-  <strong>The YouTube intelligence layer for AI agents</strong><br/>
-  <em>Zero config · 40 tools · Three-tier fallback · Transcript + visual search</em>
+  <img src="assets/readme-banner.png" alt="VidLens — The YouTube intelligence layer for AI agents" width="800" />
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/vidlens-mcp"><img src="https://img.shields.io/npm/v/vidlens-mcp?style=flat-square&color=red" alt="npm" /></a>
   <a href="https://github.com/rajanrengasamy/vidlens-mcp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-green?style=flat-square" alt="MCP" /></a>
-  <img src="https://img.shields.io/badge/tools-40-orange?style=flat-square" alt="40 tools" />
+  <img src="https://img.shields.io/badge/tools-41-orange?style=flat-square" alt="41 tools" />
   <img src="https://img.shields.io/badge/zero--config-✓-brightgreen?style=flat-square" alt="Zero Config" />
 </p>
 
